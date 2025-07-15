@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BISARA</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0"> </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="sidebar-container"></div>
+    <div id="main-content" class="sign-language-to-speech">
+      <h1>BISARA</h1>
+      <h2>Sign Language To Speech</h2>
+      <div id="loading-indicator" style="display: none;">Loading model...</div>
+      <div class="camera"></div>
+      <video id="video" autoplay></video>
+      <div class="output-container">
+        <textarea id="output-textbox" rows="3" placeholder="Detected signs will appear here..."></textarea>
+        <button id="translate-button">Translate</button>
+        <div class="auto-translate-container">
+          <input type="checkbox" id="auto-translate-checkbox" checked />
+          <label for="auto-translate-checkbox">Auto Translate</label>
+        </div>
+      </div>
+      <script>
+        function initializeCamera() {
+          navigator.mediaDevices
+            .getUserMedia({ video: true })
+            .then((stream) => {
+              const video = document.getElementById("video");
+              video.srcObject = stream;
+              window.currentStream = stream; // Save stream globally for cleanup
+            })
+            .catch((error) => {
+              console.error("Error accessing the camera:", error);
+            });
+        }
+
+        // Call the function to initialize the camera
+        initializeCamera();
+      </script>
+    </div>
+
+    <script>
+      // Load the sidebar and hamburger menu
+      fetch("sidebar.html")
+        .then((response) => response.text())
+        .then((data) => {
+          document.getElementById("sidebar-container").innerHTML = data;
+        })
+        .catch((error) => console.error("Error loading sidebar:", error));
+    </script>
+
+    <script src="script.js"></script>
+  </body>
+</html>

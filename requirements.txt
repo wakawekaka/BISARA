@@ -1,0 +1,6 @@
+tensorflow==2.15.0
+tensorflow-text==2.15.0
+tensorflow_decision_forests==1.8.1
+keras==2.15.0
+tensorflowjs==4.21.0
+mediapipe

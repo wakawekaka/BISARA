@@ -3,58 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Corrected CSP. The sha256 hash for the live server is removed as it's not needed on GitHub Pages. -->
     <meta
       http-equiv="Content-Security-Policy"
       content="
-      script-src 'self' https://cdn.jsdelivr.net 'unsafe-eval' 'sha256-vvt4KWwuNr51XfE5m+hzeNEGhiOfZzG97ccfqGsPwvE='; 
+      script-src 'self' https://cdn.jsdelivr.net 'unsafe-eval'; 
       object-src 'none'; 
       base-uri 'self';
     "
     />
+    <!-- Link to a placeholder favicon to prevent the 404 error -->
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    
     <title>BISARA</title>
 
+    <!-- Required Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0"></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
-      crossorigin="anonymous"
-    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
+    <!-- Stylesheet -->
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Container for the sidebar -->
     <div id="sidebar-container"></div>
-    <div id="main-content" class="sign-language-to-speech">
-      <h1>BISARA</h1>
-      <h2>Sign Language To Speech</h2>
-      <div id="loading-indicator" style="display: none">Loading model...</div>
-      <div class="camera"></div>
-      <video id="video" autoplay></video>
-      <div class="output-container">
-        <textarea
-          id="output-textbox"
-          rows="3"
-          placeholder="Detected signs will appear here..."
-        ></textarea>
-        <button id="translate-button">Translate</button>
-        <div class="auto-translate-container">
-          <input type="checkbox" id="auto-translate-checkbox" checked />
-          <label for="auto-translate-checkbox">Auto Translate</label>
-        </div>
-      </div>
-    </div>
 
+    <!-- The main content will be loaded into this div by script.js -->
+    <div id="main-content"></div>
+
+    <!-- Main Application Script -->
     <script src="script.js"></script>
   </body>
 </html>

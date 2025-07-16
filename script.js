@@ -1,15 +1,15 @@
-// Global variables
+// Global variables (no changes here)
 let bisaraNetModel;
-let hands; 
-const SEQUENCE_LENGTH = 30; 
-const NUM_LANDMARKS = 21; 
+let hands;
+const SEQUENCE_LENGTH = 30;
+const NUM_LANDMARKS = 21;
 const sequence = [];
 let currentPrediction = '';
-const confidenceThreshold = 0.95; 
+const confidenceThreshold = 0.95;
 let lastAppendedWord = '';
-let isWaiting = false; 
+let isWaiting = false;
 let selectedVoice = null;
-let periodTimer; 
+let periodTimer;
 let isAutoTranslateEnabled = true;
 
 const actions = {
@@ -20,9 +20,11 @@ const actions = {
     4: 'semua',
 };
 
-// Function to load content dynamically
+// --- MODIFIED SECTION ---
+
+// Function to load content dynamically from fragments
 function loadContent(url) {
-    // Stop the camera if it's running
+    // Stop the camera if it's running to prevent resource leaks
     if (window.currentStream) {
         window.currentStream.getTracks().forEach((track) => track.stop());
         window.currentStream = null;
@@ -31,22 +33,60 @@ function loadContent(url) {
     fetch(url)
         .then((response) => response.text())
         .then((data) => {
+            // Inject the HTML fragment into the main-content div
             document.getElementById("main-content").innerHTML = data;
 
-            if (url.includes("index.html")) {
-                initializeCamera();
-                loadBisaraNetModel();
+            // After loading content, run initializers for that specific page
+            if (url.includes("page-speech.html")) {
+                initializeMainContent(); // Set up buttons and checkboxes
+                initializeCamera();      // Start the camera
+                loadBisaraNetModel();    // Load the ML model
             }
-
-            fetch("sidebar.html")
-                .then((response) => response.text())
-                .then((sidebarData) => {
-                    document.getElementById("sidebar-container").innerHTML = sidebarData;
-                    setupSidebar();
-                });
+            // Add an 'else if' here for list.html if it ever needs JS
         })
         .catch((error) => console.error("Error loading content:", error));
 }
+
+// Function to set up sidebar event listeners
+function setupSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const hamburger = document.getElementById("hamburger");
+    const mainContent = document.getElementById("main-content");
+
+    // Toggle sidebar visibility
+    hamburger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (sidebar.style.left === "0px") {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
+    });
+
+    // Close sidebar when clicking outside of it
+    mainContent.addEventListener("click", () => {
+        if (sidebar.style.left === "0px") {
+            closeSidebar();
+        }
+    });
+
+    // Navigate to Sign Language To Speech section (using the new file)
+    document.getElementById("to-speech").addEventListener("click", (e) => {
+        e.preventDefault();
+        closeSidebar(() => loadContent("page-speech.html"));
+    });
+
+    // Navigate to Sign Language List section
+    document.getElementById("to-list").addEventListener("click", (e) => {
+        e.preventDefault();
+        closeSidebar(() => loadContent("list.html"));
+    });
+
+    setDefaultVoice();
+}
+
+// --- END MODIFIED SECTION ---
+
 
 function initializeMainContent() {
     const translateButton = document.getElementById('translate-button');
@@ -60,7 +100,7 @@ function initializeMainContent() {
             translateButton.disabled = isAutoTranslateEnabled;
         });
     }
-    
+
     if (translateButton) {
         translateButton.addEventListener('click', () => {
             const outputTextbox = document.getElementById('output-textbox');
@@ -78,7 +118,8 @@ async function loadBisaraNetModel() {
         if (loadingIndicator) {
             loadingIndicator.style.display = 'block';
         }
-        bisaraNetModel = await tf.loadLayersModel('model/model.json');
+        // Using './' makes the path relative and more reliable for GitHub Pages
+        bisaraNetModel = await tf.loadLayersModel('./model/model.json');
         console.log('BisaraNet.tfjs model loaded successfully!', bisaraNetModel);
         if (loadingIndicator) {
             loadingIndicator.style.display = 'none';
@@ -96,12 +137,14 @@ function initializeCamera() {
     }
 
     navigator.mediaDevices
-        .getUserMedia({ video: true })
+        .getUserMedia({
+            video: true
+        })
         .then((stream) => {
             videoElement.srcObject = stream;
             videoElement.style.transform = "scaleX(-1)";
             videoElement.play();
-            window.currentStream = stream;
+            window.currentStream = stream; // Save stream for cleanup
 
             videoElement.addEventListener('loadeddata', () => {
                 console.log('Camera video loaded, initializing MediaPipe and starting prediction loop...');
@@ -112,18 +155,15 @@ function initializeCamera() {
         .catch((error) => console.error("Error accessing the camera:", error));
 }
 
-// Initialize MediaPipe Hands
 function initializeMediaPipeHands() {
     if (typeof Hands === 'undefined') {
-        console.error("MediaPipe 'Hands' object is not defined. Ensure the library is loaded and has time to initialize.");
+        console.error("MediaPipe 'Hands' object is not defined.");
         return;
     }
 
     try {
         hands = new Hands({
-            locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-            }
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
 
         hands.setOptions({
@@ -140,32 +180,17 @@ function initializeMediaPipeHands() {
     }
 }
 
-
-// Callback for MediaPipe Hand results
 async function onHandsResults(results) {
-    // Create a placeholder for landmarks of two hands (21 landmarks * 3 coords * 2 hands = 126 features)
     let keypoints = new Array(NUM_LANDMARKS * 3 * 2).fill(0);
 
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        // Loop through up to two detected hands
         results.multiHandLandmarks.slice(0, 2).forEach((handLandmarks, i) => {
-            // Because the camera feed is flipped horizontally, we un-flip the x-coordinates.
-            const flippedHandLandmarks = handLandmarks.map(landmark => {
-                return { ...landmark, x: 1 - landmark.x };
-            });
-
-            // Determine the starting index for this hand's data (0 for the first hand, 63 for the second)
+            const flippedHandLandmarks = handLandmarks.map(landmark => ({ ...landmark, x: 1 - landmark.x }));
             const startIdx = i * (NUM_LANDMARKS * 3);
-            
-            // Extract and flatten coordinates
             const x_coords = flippedHandLandmarks.map(lm => lm.x);
             const y_coords = flippedHandLandmarks.map(lm => lm.y);
             const z_coords = flippedHandLandmarks.map(lm => lm.z);
-            
-            // Concatenate into a single array for this hand
             const handKeypoints = [...x_coords, ...y_coords, ...z_coords];
-
-            // Place the hand's keypoints into the main array at the correct position
             keypoints.splice(startIdx, handKeypoints.length, ...handKeypoints);
         });
     }
@@ -177,7 +202,6 @@ async function onHandsResults(results) {
 
     if (sequence.length === SEQUENCE_LENGTH && bisaraNetModel) {
         try {
-            // Reshape the input tensor for the two-handed model (30 frames, 126 features)
             const inputTensor = tf.tensor(sequence, [SEQUENCE_LENGTH, NUM_LANDMARKS * 3 * 2], 'float32').expandDims(0);
             const prediction = bisaraNetModel.predict(inputTensor);
             const predictionArray = prediction.arraySync()[0];
@@ -189,7 +213,6 @@ async function onHandsResults(results) {
 
                 if (outputTextbox && currentPrediction !== 'blank' && currentPrediction !== lastAppendedWord) {
                     clearTimeout(periodTimer);
-
                     let wordToAppend = currentPrediction;
                     if (outputTextbox.value.trim() === '' || outputTextbox.value.endsWith('. ')) {
                         wordToAppend = wordToAppend.charAt(0).toUpperCase() + wordToAppend.slice(1);
@@ -224,7 +247,6 @@ async function onHandsResults(results) {
     }
 }
 
-// Main prediction loop
 async function startPredictionLoop(videoElement) {
     let isProcessing = false;
 
@@ -233,12 +255,9 @@ async function startPredictionLoop(videoElement) {
             setTimeout(detectHands, 100);
             return;
         }
-
         if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA && !isProcessing) {
             isProcessing = true;
-            await hands.send({
-                image: videoElement
-            });
+            await hands.send({ image: videoElement });
             isProcessing = false;
         }
         requestAnimationFrame(detectHands);
@@ -246,52 +265,6 @@ async function startPredictionLoop(videoElement) {
     requestAnimationFrame(detectHands);
 }
 
-
-// Call these functions initially if on the index.html page
-if (window.location.href.includes("index.html")) {
-    initializeCamera();
-    loadBisaraNetModel();
-}
-
-// Function to set up sidebar event listeners
-function setupSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const hamburger = document.getElementById("hamburger");
-    const mainContent = document.getElementById("main-content");
-
-    // Toggle sidebar visibility
-    hamburger.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (sidebar.style.left === "0px") {
-            closeSidebar();
-        } else {
-            openSidebar();
-        }
-    });
-
-    // Close sidebar when clicking outside of it
-    mainContent.addEventListener("click", () => {
-        if (sidebar.style.left === "0px") {
-            closeSidebar();
-        }
-    });
-
-    // Navigate to Sign Language To Speech section
-    document.getElementById("to-speech").addEventListener("click", (e) => {
-        e.preventDefault();
-        closeSidebar(() => loadContent("index.html"));
-    });
-
-    // Navigate to Sign Language List section
-    document.getElementById("to-list").addEventListener("click", (e) => {
-        e.preventDefault();
-        closeSidebar(() => loadContent("list.html"));
-    });
-
-    setDefaultVoice();
-}
-
-// Function to open the sidebar
 function openSidebar() {
     const sidebar = document.getElementById("sidebar");
     sidebar.style.left = "0px";
@@ -299,36 +272,23 @@ function openSidebar() {
     hamburger.classList.add("open");
 }
 
-// Function to close the sidebar with animation
 function closeSidebar(callback) {
     const sidebar = document.getElementById("sidebar");
     sidebar.style.left = "-300px";
     const hamburger = document.getElementById("hamburger");
     hamburger.classList.remove("open");
-
     setTimeout(() => {
         if (callback) callback();
     }, 300);
 }
 
 function setDefaultVoice() {
-    if (typeof speechSynthesis === 'undefined') {
-        return;
-    }
-
+    if (typeof speechSynthesis === 'undefined') return;
     const setVoice = () => {
         const voices = speechSynthesis.getVoices();
         if (voices.length === 0) return;
-
-        // Find an Indonesian voice and set it as the selected voice
-        selectedVoice = voices.find(voice => voice.lang.startsWith('id'));
-
-        // If no Indonesian voice is found, fall back to the first available voice
-        if (!selectedVoice) {
-            selectedVoice = voices[0];
-        }
+        selectedVoice = voices.find(voice => voice.lang.startsWith('id')) || voices[0];
     };
-
     setVoice();
     if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = setVoice;
@@ -336,9 +296,7 @@ function setDefaultVoice() {
 }
 
 function speakText(text) {
-    if (speechSynthesis.speaking) {
-        return;
-    }
+    if (speechSynthesis.speaking) return;
     if (text !== "") {
         const utterThis = new SpeechSynthesisUtterance(text);
         utterThis.onend = function(event) {
@@ -358,12 +316,18 @@ function speakText(text) {
     }
 }
 
-// Load the sidebar and hamburger menu initially
-fetch("sidebar.html")
-    .then((response) => response.text())
-    .then((data) => {
-        document.getElementById("sidebar-container").innerHTML = data;
-        setupSidebar();
-        initializeMainContent();
-    })
-    .catch((error) => console.error("Error loading sidebar:", error));
+// --- FINAL INITIALIZATION ---
+// This runs when the page first loads
+document.addEventListener('DOMContentLoaded', () => {
+    // Load the sidebar first
+    fetch("sidebar.html")
+        .then((response) => response.text())
+        .then((data) => {
+            document.getElementById("sidebar-container").innerHTML = data;
+            // After the sidebar is loaded, set up its buttons
+            setupSidebar();
+            // Finally, load the default page content, which will start the camera
+            loadContent('page-speech.html');
+        })
+        .catch((error) => console.error("Error loading sidebar:", error));
+});

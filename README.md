@@ -2,7 +2,7 @@
 
 Bisara is a real-time sign language recognition application that translates Indonesian Sign Language (Bahasa Isyarat Indonesia) into speech. It uses a deep learning model to recognize hand gestures from a live webcam feed and synthesizes the corresponding words as speech.
 
-This project is live on GitHub Pages\! 🚀
+This project is live on [GitHub Pages\!](https://wakawekaka.github.io/BISARA/) 🚀
 
 ## Features
 

@@ -20,8 +20,6 @@ const actions = {
     4: 'semua',
 };
 
-// --- MODIFIED SECTION ---
-
 // Function to load content dynamically from fragments
 function loadContent(url) {
     // Stop the camera if it's running to prevent resource leaks
@@ -42,7 +40,6 @@ function loadContent(url) {
                 initializeCamera();      // Start the camera
                 loadBisaraNetModel();    // Load the ML model
             }
-            // Add an 'else if' here for list.html if it ever needs JS
         })
         .catch((error) => console.error("Error loading content:", error));
 }
@@ -85,9 +82,6 @@ function setupSidebar() {
     setDefaultVoice();
 }
 
-// --- END MODIFIED SECTION ---
-
-
 function initializeMainContent() {
     const translateButton = document.getElementById('translate-button');
     const autoTranslateCheckbox = document.getElementById('auto-translate-checkbox');
@@ -118,7 +112,6 @@ async function loadBisaraNetModel() {
         if (loadingIndicator) {
             loadingIndicator.style.display = 'block';
         }
-        // Using './' makes the path relative and more reliable for GitHub Pages
         bisaraNetModel = await tf.loadLayersModel('./model/model.json');
         console.log('BisaraNet.tfjs model loaded successfully!', bisaraNetModel);
         if (loadingIndicator) {
